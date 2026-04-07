@@ -15,11 +15,15 @@ Available tools:
 - total_withdrawal
 - expense_breakdown
 - daily_summary
+- financial_insights
 
 Rules:
-- If the user is clearly asking for one of the available tool actions,
-  return ONLY the tool name.
-- If the question needs transaction context or explanation, return ONLY: rag
+- If the user asks about total deposit, return ONLY: total_deposit
+- If the user asks about total withdrawal or total debit, return ONLY: total_withdrawal
+- If the user asks for expense breakdown, spending categories, or where money is going, return ONLY: expense_breakdown
+- If the user asks for daily summary, return ONLY: daily_summary
+- If the user asks where they are losing money, financial health, recommendations, money leaks, key insights, or financial insights, return ONLY: financial_insights
+- If the question needs transaction context or explanation from retrieved rows, return ONLY: rag
 - Do not add extra words.
 """
 

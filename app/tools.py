@@ -4,6 +4,7 @@ from app.analytics import (
     total_deposit,
     total_withdrawal,
 )
+from app.insights import generate_financial_insights
 
 
 def tool_total_deposit() -> str:
@@ -41,9 +42,14 @@ def tool_daily_summary() -> str:
     return "\n".join(lines)
 
 
+def tool_financial_insights() -> str:
+    return generate_financial_insights()
+
+
 TOOLS = {
     "total_deposit": tool_total_deposit,
     "total_withdrawal": tool_total_withdrawal,
     "expense_breakdown": tool_expense_breakdown,
     "daily_summary": tool_daily_summary,
+    "financial_insights": tool_financial_insights,
 }

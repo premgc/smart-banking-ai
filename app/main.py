@@ -28,6 +28,7 @@ from app.prompts import SMART_BANKING_PROMPT
 from app.retriever import health_check as retriever_health_check
 from app.retriever import search
 
+
 st.set_page_config(page_title="Smart Banking Assistant", layout="wide")
 st.title("🏦 Smart Banking Assistant")
 
@@ -212,6 +213,17 @@ if query:
             answer = "### 📋 Available Transaction Types\n\n" + "\n".join(
                 [f"- {t}" for t in txn_types]
             )
+
+        elif (
+            "financial insights" in q
+            or "where am i losing money" in q
+            or "money leak" in q
+            or "money leaks" in q
+            or "financial health" in q
+            or "recommendation" in q
+            or "recommendations" in q
+        ):
+            answer = run_agent(query)
 
         else:
             answer = run_agent(query)
