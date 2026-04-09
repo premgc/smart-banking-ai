@@ -13,8 +13,7 @@ Rules:
 - Keep answers clear, direct, and numeric where possible.
 
 Context:
-{context}
-
+{context} 
 Question:
 {question}
 

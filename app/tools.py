@@ -141,7 +141,7 @@ def tool_filtered_summary(query: str) -> str:
                 f"- {row['Tran Date'].strftime('%d-%b-%Y')} → "
                 f"Deposit {_fmt_rupee(float(row['Deposit']))}, "
                 f"Withdrawal {_fmt_rupee(float(row['Withdrawal']))}"
-            )
+            ) 
 
         return "\n".join(lines)
 

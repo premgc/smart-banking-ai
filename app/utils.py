@@ -6,7 +6,6 @@ from typing import List
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from config.settings import CHUNK_OVERLAP, CHUNK_SIZE
 
-
 def setup_logger(name: str) -> logging.Logger:
     logger = logging.getLogger(name)
     if not logger.handlers:

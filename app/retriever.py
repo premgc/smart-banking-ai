@@ -9,7 +9,7 @@ from sentence_transformers import SentenceTransformer
 from config.settings import (
     EMBEDDING_MODEL,
     QDRANT_COLLECTION,
-    QDRANT_HOST,
+    QDRANT_HOST, 
     QDRANT_MODE,
     QDRANT_PORT,
     QDRANT_TIMEOUT,

@@ -26,13 +26,11 @@ from app.analytics import (
 from app.llm import check_ollama_health
 from app.retriever import health_check as retriever_health_check
 
-
 # =========================================================
 # PAGE SETUP
 # =========================================================
 st.set_page_config(page_title="Smart Banking Assistant", layout="wide")
 st.title("🏦 Smart Banking Assistant")
-
 
 # =========================================================
 # HELPERS
