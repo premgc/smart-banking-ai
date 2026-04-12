@@ -29,6 +29,7 @@ AZURE_OPENAI_API_VERSION = os.getenv(
 
 REQUEST_TIMEOUT = int(os.getenv("OPENAI_TIMEOUT", "30"))
 
+
 print("Using deployment:", AZURE_OPENAI_DEPLOYMENT)
 # =========================================================
 # VALIDATION
