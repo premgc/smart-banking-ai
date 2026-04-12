@@ -7,6 +7,8 @@ from pathlib import Path
 from dotenv import load_dotenv
 from openai import AzureOpenAI
 
+from app.retriever import AZURE_OPENAI_DEPLOYMENT
+
 
 # =========================================================
 # LOAD ENV (ROBUST)
@@ -27,7 +29,7 @@ AZURE_OPENAI_API_VERSION = os.getenv(
 
 REQUEST_TIMEOUT = int(os.getenv("OPENAI_TIMEOUT", "30"))
 
-
+print("Using deployment:", AZURE_OPENAI_DEPLOYMENT)
 # =========================================================
 # VALIDATION
 # =========================================================
