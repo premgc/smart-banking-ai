@@ -3,6 +3,12 @@ import streamlit as st
 from app.llm import generate_response
 from app.retriever import search
 
+import sys
+from pathlib import Path
+
+ROOT_DIR = Path(__file__).resolve().parent.parent
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
 
 # =========================================================
 # PAGE CONFIG
