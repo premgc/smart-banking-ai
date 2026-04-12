@@ -1,13 +1,18 @@
 from app.analytics import get_df
 from app.retriever import upsert_texts
+from dotenv import load_dotenv
+from pathlib import Path
+
+env_path = Path(__file__).resolve().parent.parent / ".env"
+load_dotenv(env_path)
 
 
-def row_to_text(row) -> str:
+def row_to_text(row):
     return f"""
-    Date: {row['Tran Date']}
-    Description: {row['Particulars']}
-    Deposit: {row['Deposit']}
-    Withdrawal: {row['Withdrawal']}
+    Date: {row.get('date')}
+    Description: {row.get('description')}
+    Deposit: {row.get('deposit')}
+    Withdrawal: {row.get('withdrawal')}
     """
 
 
