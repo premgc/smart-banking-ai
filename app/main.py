@@ -1,7 +1,8 @@
 import streamlit as st
 
-from app.llm import generate_response
-from app.retriever import search
+
+from llm import generate_response
+from retriever import search
 
 import sys
 from pathlib import Path
