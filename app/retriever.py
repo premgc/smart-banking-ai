@@ -1,136 +1,128 @@
 from __future__ import annotations
 
+import os
+import uuid
 from typing import List
+from pathlib import Path
 
-from qdrant_client import QdrantClient
-from qdrant_client.http.models import Distance, PointStruct, VectorParams
-from sentence_transformers import SentenceTransformer
+from azure.search.documents import SearchClient
+from azure.core.credentials import AzureKeyCredential
 
-from config.settings import (
-    EMBEDDING_MODEL,
-    QDRANT_COLLECTION,
-    QDRANT_HOST, 
-    QDRANT_MODE,
-    QDRANT_PORT,
-    QDRANT_TIMEOUT,
-    QDRANT_URL,
-    SEARCH_LIMIT,
-    VECTOR_STORE_DIR,
-)
-
-_model = None
-_client = None
+from openai import AzureOpenAI
+from dotenv import load_dotenv
 
 
-def get_model() -> SentenceTransformer:
-    global _model
-    if _model is None:
-        _model = SentenceTransformer(EMBEDDING_MODEL)
-    return _model
+# =========================================================
+# LOAD ENV (robust)
+# =========================================================
+env_path = Path(__file__).resolve().parent.parent / ".env"
+load_dotenv(dotenv_path=env_path)
 
 
-def get_client() -> QdrantClient:
-    global _client
-    if _client is not None:
-        return _client
+# =========================================================
+# ENV CONFIG
+# =========================================================
+SEARCH_ENDPOINT = os.getenv("AZURE_SEARCH_ENDPOINT")
+SEARCH_KEY = os.getenv("AZURE_SEARCH_KEY")
+INDEX_NAME = os.getenv("AZURE_SEARCH_INDEX", "transactions-index")
 
-    if QDRANT_MODE == 'remote':
-        if QDRANT_URL:
-            _client = QdrantClient(url=QDRANT_URL, timeout=QDRANT_TIMEOUT)
-        else:
-            _client = QdrantClient(host=QDRANT_HOST, port=QDRANT_PORT, timeout=QDRANT_TIMEOUT)
-    else:
-        VECTOR_STORE_DIR.mkdir(parents=True, exist_ok=True)
-        _client = QdrantClient(path=str(VECTOR_STORE_DIR))
-
-    return _client
+AZURE_OPENAI_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT")
+AZURE_OPENAI_API_KEY = os.getenv("AZURE_OPENAI_API_KEY")
+AZURE_OPENAI_DEPLOYMENT = os.getenv("AZURE_OPENAI_EMBEDDING_DEPLOYMENT")
 
 
-def collection_exists() -> bool:
-    client = get_client()
-    try:
-        return client.collection_exists(QDRANT_COLLECTION)
-    except Exception:
-        return False
+# =========================================================
+# VALIDATION (fail fast)
+# =========================================================
+if not SEARCH_ENDPOINT or not SEARCH_KEY:
+    raise RuntimeError("Azure Search configuration missing")
+
+if not AZURE_OPENAI_ENDPOINT or not AZURE_OPENAI_API_KEY or not AZURE_OPENAI_DEPLOYMENT:
+    raise RuntimeError("Azure OpenAI configuration missing")
 
 
-def ensure_collection(vector_size: int) -> None:
-    client = get_client()
-    if collection_exists():
-        return
-    client.create_collection(
-        collection_name=QDRANT_COLLECTION,
-        vectors_config=VectorParams(size=vector_size, distance=Distance.COSINE),
+# =========================================================
+# CLIENTS
+# =========================================================
+def get_search_client() -> SearchClient:
+    return SearchClient(
+        endpoint=SEARCH_ENDPOINT,
+        index_name=INDEX_NAME,
+        credential=AzureKeyCredential(SEARCH_KEY),
     )
 
 
+openai_client = AzureOpenAI(
+    api_key=AZURE_OPENAI_API_KEY,
+    azure_endpoint=AZURE_OPENAI_ENDPOINT,   # ✅ CORRECT NAME
+    api_version="2024-02-01"
+)
+
+# =========================================================
+# EMBEDDING (AZURE OPENAI SDK)
+# =========================================================
+
+def get_embedding(text: str):
+    response = openai_client.embeddings.create(
+        input=text,
+        model=AZURE_OPENAI_EMBEDDING_DEPLOYMENT
+    )
+    return response.data[0].embedding
+# =========================================================
+# HEALTH CHECK
+# =========================================================
 def health_check() -> tuple[bool, str]:
     try:
-        client = get_client()
-        _ = client
-        _ = get_model()
-        if collection_exists():
-            return True, f"Qdrant ready, collection '{QDRANT_COLLECTION}' found"
-        return False, f"Qdrant reachable, but collection '{QDRANT_COLLECTION}' not found. Run python ingest.py"
+        client = get_search_client()
+        _ = list(client.search(search_text="test", top=1))
+        return True, "Azure AI Search ready"
     except Exception as e:
-        return False, f'Qdrant health check failed: {e}'
+        return False, f"Azure Search error: {e}"
 
 
+# =========================================================
+# UPSERT DATA
+# =========================================================
 def upsert_texts(texts: List[str]) -> int:
-    clean_texts = [str(t).strip() for t in texts if str(t).strip()]
+    client = get_search_client()
+
+    clean_texts = [t.strip() for t in texts if t and t.strip()]
     if not clean_texts:
         return 0
 
-    model = get_model()
-    client = get_client()
-    vectors = model.encode(clean_texts).tolist()
-    vector_size = len(vectors[0])
-    ensure_collection(vector_size)
+    docs = []
+    for text in clean_texts:
+        docs.append({
+            "id": str(uuid.uuid4()),
+            "content": text,
+            "embedding": get_embedding(text),
+        })
 
-    points = [
-        PointStruct(id=idx, vector=vector, payload={'text': text})
-        for idx, (text, vector) in enumerate(zip(clean_texts, vectors), start=1)
-    ]
+    result = client.upload_documents(documents=docs)
 
-    client.upsert(collection_name=QDRANT_COLLECTION, points=points)
-    return len(points)
+    success_count = sum(1 for r in result if r.succeeded)
+
+    print(f"✅ Uploaded {success_count} documents to Azure AI Search")
+
+    return success_count
 
 
-def search(query: str, limit: int = SEARCH_LIMIT) -> List[str]:
-    if not query or not str(query).strip():
-        return []
+# =========================================================
+# SEARCH (VECTOR + TEXT HYBRID)
+# =========================================================
+def search(query: str, limit: int = 5) -> List[str]:
+    client = get_search_client()
 
-    if not collection_exists():
-        raise RuntimeError(
-            f"Qdrant collection '{QDRANT_COLLECTION}' does not exist. Run python ingest.py first."
-        )
+    vector = get_embedding(query)
 
-    model = get_model()
-    client = get_client()
-    vector = model.encode(query).tolist()
+    results = client.search(
+        search_text=query,
+        top=limit,
+        vector_queries=[{
+            "vector": vector,
+            "k": limit,
+            "fields": "embedding"
+        }],
+    )
 
-    try:
-        result = client.query_points(
-            collection_name=QDRANT_COLLECTION,
-            query=vector,
-            limit=limit,
-        )
-        points = getattr(result, 'points', result)
-    except AttributeError:
-        points = client.search(
-            collection_name=QDRANT_COLLECTION,
-            query_vector=vector,
-            limit=limit,
-        )
-    except Exception as e:
-        raise RuntimeError(f'Qdrant query failed: {e}') from e
-
-    texts = []
-    for point in points:
-        payload = getattr(point, 'payload', None)
-        if payload is None and isinstance(point, dict):
-            payload = point.get('payload', {})
-        text = str((payload or {}).get('text', '')).strip()
-        if text:
-            texts.append(text)
-    return texts
+    return [doc["content"] for doc in results]

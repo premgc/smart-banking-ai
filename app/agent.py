@@ -1,10 +1,20 @@
 from __future__ import annotations
 
-from app.llm import check_ollama_health, generate_response
+import logging
+
+from app.llm import check_openai_health, generate_response
 from app.prompts import SMART_BANKING_PROMPT
 from app.retriever import health_check as retriever_health_check
 from app.retriever import search
 from app.tools import TOOLS
+
+
+# =========================================================
+# LOGGER (PRODUCTION READY)
+# =========================================================
+logger = logging.getLogger("agent")
+if not logger.handlers:
+    logging.basicConfig(level=logging.INFO)
 
 
 # =========================================================
@@ -59,9 +69,12 @@ def decide_action(query: str) -> str:
         # Clean response
         decision = decision.replace("\n", "").replace(".", "").strip()
 
+        logger.info(f"[DECISION] Query: {query} → {decision}")
+
         return decision
 
-    except Exception:
+    except Exception as e:
+        logger.error(f"[DECISION ERROR] {e}")
         return "rag"
 
 
@@ -73,14 +86,16 @@ def execute_tool(tool_name: str, query: str) -> str:
         if tool_name not in TOOLS:
             return None
 
-        # Special case: filtered summary needs query
+        logger.info(f"[TOOL] Executing: {tool_name}")
+
         if tool_name == "filtered_summary":
             return TOOLS[tool_name](query)
 
         return TOOLS[tool_name]()
 
     except Exception as e:
-        return f"❌ Tool execution error: {e}"
+        logger.error(f"[TOOL ERROR] {tool_name}: {e}")
+        return None
 
 
 # =========================================================
@@ -89,10 +104,13 @@ def execute_tool(tool_name: str, query: str) -> str:
 def run_rag(query: str) -> str:
     try:
         is_qdrant_ok, qdrant_msg = retriever_health_check()
+
         if not is_qdrant_ok:
+            logger.warning(f"[RAG WARNING] {qdrant_msg}")
             return f"❌ {qdrant_msg}"
 
         docs = search(query, limit=8)
+
         context = "\n\n".join(docs) if docs else "No matching data found."
 
         prompt = SMART_BANKING_PROMPT.format(
@@ -103,42 +121,50 @@ def run_rag(query: str) -> str:
         return generate_response(prompt)
 
     except Exception as e:
-        return f"❌ RAG error: {e}"
+        logger.error(f"[RAG ERROR] {e}")
+        return "⚠️ Unable to retrieve data. Please try again."
 
 
 # =========================================================
 # MAIN AGENT FUNCTION
 # =========================================================
 def run_agent(query: str) -> str:
-    # -----------------------------------------------------
-    # 1. Health Check
-    # -----------------------------------------------------
-    is_ollama_ok, ollama_msg = check_ollama_health()
-    if not is_ollama_ok:
-        return f"❌ {ollama_msg}"
+    try:
+        # -----------------------------------------------------
+        # 1. Health Check (Azure OpenAI)
+        # -----------------------------------------------------
+        is_ok, msg = check_openai_health()
 
-    # -----------------------------------------------------
-    # 2. Decide action
-    # -----------------------------------------------------
-    decision = decide_action(query)
+        if not is_ok:
+            logger.error(f"[OPENAI ERROR] {msg}")
+            return f"❌ {msg}"
 
-    # Safety fallback
-    if decision not in TOOLS and decision != "rag":
-        decision = "rag"
+        # -----------------------------------------------------
+        # 2. Decide action
+        # -----------------------------------------------------
+        decision = decide_action(query)
 
-    # -----------------------------------------------------
-    # 3. Execute tool
-    # -----------------------------------------------------
-    if decision in TOOLS:
-        result = execute_tool(decision, query)
+        if decision not in TOOLS and decision != "rag":
+            logger.warning(f"[INVALID DECISION] {decision} → fallback to rag")
+            decision = "rag"
 
-        # fallback if tool failed
-        if not result:
+        # -----------------------------------------------------
+        # 3. Execute tool
+        # -----------------------------------------------------
+        if decision in TOOLS:
+            result = execute_tool(decision, query)
+
+            if result:
+                return result
+
+            logger.warning("[TOOL FAILED] Falling back to RAG")
             return run_rag(query)
 
-        return result
+        # -----------------------------------------------------
+        # 4. Default → RAG
+        # -----------------------------------------------------
+        return run_rag(query)
 
-    # -----------------------------------------------------
-    # 4. Default → RAG
-    # -----------------------------------------------------
-    return run_rag(query)
+    except Exception as e:
+        logger.error(f"[AGENT ERROR] {e}")
+        return "⚠️ Something went wrong. Please try again."

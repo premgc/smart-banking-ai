@@ -1,7 +1,20 @@
-streamlit>=1.35.0
-pandas>=2.2.0
-requests>=2.31.0
-qdrant-client>=1.9.0
-sentence-transformers>=2.7.0
-langchain-text-splitters>=0.2.0
-python-dotenv>=1.0.1
+streamlit==1.35.0
+pandas==2.2.2
+requests==2.31.0
+
+# Azure Storage (NEW 🔥)
+azure-storage-blob==12.19.0
+
+# Vector DB (keep for now, will upgrade later)
+##qdrant-client==1.9.1
+
+# Embeddings (⚠️ heavy but required for now)
+sentence-transformers==2.7.0
+
+# Text processing
+langchain-text-splitters==0.2.0
+
+# Env config
+python-dotenv==1.0.1
+
+azure-search-documents==11.4.0
