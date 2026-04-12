@@ -4,6 +4,8 @@ import os
 import uuid
 from typing import List
 from pathlib import Path
+from azure.search.documents.models import VectorizedQuery
+
 
 from azure.search.documents import SearchClient
 from azure.core.credentials import AzureKeyCredential
@@ -112,19 +114,21 @@ def upsert_texts(texts: List[str]) -> int:
 # =========================================================
 # SEARCH (VECTOR + TEXT HYBRID)
 # =========================================================
-def search(query: str, limit: int = 5) -> List[str]:
+def search(query: str, limit: int = 5):
     client = get_search_client()
 
     vector = get_embedding(query)
 
+    vector_query = VectorizedQuery(
+        vector=vector,
+        k_nearest_neighbors=limit,
+        fields="embedding"
+    )
+
     results = client.search(
         search_text=query,
+        vector_queries=[vector_query],
         top=limit,
-        vector_queries=[{
-            "vector": vector,
-            "k": limit,
-            "fields": "embedding"
-        }],
     )
 
     return [doc["content"] for doc in results]
