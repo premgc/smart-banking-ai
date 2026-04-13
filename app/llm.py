@@ -31,6 +31,10 @@ REQUEST_TIMEOUT = int(os.getenv("OPENAI_TIMEOUT", "30"))
 
 
 print("Using deployment:", AZURE_OPENAI_DEPLOYMENT)
+
+print("DEPLOYMENT:", os.getenv("AZURE_OPENAI_DEPLOYMENT"))
+print("EMBEDDING:", os.getenv("AZURE_OPENAI_EMBEDDING_DEPLOYMENT"))
+print("ENDPOINT:", os.getenv("AZURE_OPENAI_ENDPOINT"))
 # =========================================================
 # VALIDATION
 # =========================================================
