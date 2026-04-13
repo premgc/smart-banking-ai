@@ -2,11 +2,11 @@ from __future__ import annotations
 
 import logging
 
-from app.llm import check_openai_health, generate_response
-from app.prompts import SMART_BANKING_PROMPT
-from app.retriever import health_check as retriever_health_check
-from app.retriever import search
-from app.tools import TOOLS
+from llm import check_openai_health, generate_response
+from prompts import SMART_BANKING_PROMPT
+from retriever import health_check as retriever_health_check
+from retriever import search
+from tools import TOOLS
 
 
 # =========================================================

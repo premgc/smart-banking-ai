@@ -7,7 +7,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from openai import AzureOpenAI
 
-from app.retriever import AZURE_OPENAI_DEPLOYMENT
+from retriever import AZURE_OPENAI_DEPLOYMENT
 
 
 # =========================================================
