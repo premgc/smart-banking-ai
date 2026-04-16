@@ -19,6 +19,7 @@ st.set_page_config(page_title="💳 Smart Banking AI", layout="wide")
 st.title("💳 Smart Banking Assistant")
 
 
+
 # =========================================================
 # SESSION MEMORY (Chat History)
 # =========================================================
@@ -33,6 +34,9 @@ for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.markdown(msg["content"])
 
+@app.post("/analyze")
+def analyze_api(payload: dict):
+    return run_analysis(payload["query"])
 
 # =========================================================
 # USER INPUT

@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 from pathlib import Path
 
 
+
 # =========================================================
 # LOAD ENV (ROBUST)
 # =========================================================
@@ -183,3 +184,18 @@ TOOLS = {
     "financial_insights": financial_insights,
     "filtered_summary": filtered_summary,
 }
+
+def run_analysis(query: str):
+    """
+    Simple analysis placeholder for MCP integration
+    """
+
+    if not query:
+        return {"message": "No query provided"}
+
+    # Dummy response (replace later with real logic)
+    return {
+        "status": "success",
+        "query": query,
+        "insight": f"Analysis result for: {query}"
+    }
